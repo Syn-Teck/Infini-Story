@@ -40,9 +40,9 @@ Le testeur donne d’abord [DONNE_CECI_A_TON_AGENT_AI.md](DONNE_CECI_A_TON_AGENT
 
 Le dossier `pwa/` contient la première interface mobile d’Infini-Story. Cette étape autonome permet de tester la narration, les actions, les jets transparents, la fiche de personnage, l’inventaire, le journal et la lecture à voix haute offerte par le navigateur.
 
-Le prototype fonctionne exclusivement avec des données de démonstration locales. Il ne lit ni ne modifie le canon, ne lance aucune campagne et n’avance aucun World Clock.
+Le prototype fonctionne avec des données de démonstration locales. Il ne lit ni ne modifie le canon, ne lance aucune campagne et n’avance aucun World Clock.
 
-La vue **Sauvegardes** permet déjà d’exporter le journal de démonstration dans un fichier JSON restaurable et de réimporter ce même format après validation locale. Cette fonction ne téléverse aucun fichier. Le coffre SharePoint par compte sera relié dans une étape distincte, après la configuration Microsoft Entra et des règles d’accès.
+La vue **Sauvegardes** permet d’exporter le journal de démonstration dans un fichier JSON restaurable et de réimporter ce même format après validation locale. Après connexion Microsoft, elle peut aussi synchroniser la sauvegarde de démonstration vers le coffre SharePoint attribué. Cette fonction ne téléverse aucune donnée canonique.
 
 Pour le démarrer :
 

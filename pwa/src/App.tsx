@@ -18,6 +18,14 @@ import {
   Volume2,
 } from "lucide-react";
 import { demoCharacter, demoInventory, initialMessages } from "./demoState";
+import {
+  getConnectedAccount,
+  loadFromCloud,
+  saveToCloud,
+  signIn,
+  signOut,
+  type ConnectedAccount,
+} from "./sharepoint";
 import type { LocalSaveBundle, StoryMessage, ViewName } from "./types";
 
 const STORAGE_KEY = "infini-story.prototype.messages.v1";
@@ -73,6 +81,8 @@ function App() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [speechPaused, setSpeechPaused] = useState(false);
   const [saveNotice, setSaveNotice] = useState("Aucune sauvegarde exportée durant cette session.");
+  const [account, setAccount] = useState<ConnectedAccount | null>(null);
+  const [cloudBusy, setCloudBusy] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,6 +90,10 @@ function App() {
   }, [messages]);
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
+  useEffect(() => {
+    void getConnectedAccount().then(setAccount).catch(() => setAccount(null));
+  }, []);
 
   const lastNarration = useMemo(
     () => [...messages].reverse().find((message) => message.role === "gm"),
@@ -151,13 +165,7 @@ function App() {
   }
 
   function exportSave() {
-    const bundle: LocalSaveBundle = {
-      format: "infini-story-local-save",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      mode: "demo-local",
-      messages,
-    };
+    const bundle = createSaveBundle(messages);
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -166,6 +174,57 @@ function App() {
     link.click();
     URL.revokeObjectURL(url);
     setSaveNotice("Sauvegarde locale exportée. Elle ne contient aucune donnée canonique.");
+  }
+
+  async function connectCloud() {
+    setCloudBusy(true);
+    try {
+      const connected = await signIn();
+      setAccount(connected);
+      setSaveNotice(`Connecté à Microsoft : ${connected.name}. Le coffre SharePoint SynikWulf est prêt.`);
+    } catch {
+      setSaveNotice("Connexion Microsoft annulée ou refusée. Aucune donnée n’a été envoyée.");
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function disconnectCloud() {
+    setCloudBusy(true);
+    try {
+      await signOut();
+      setAccount(null);
+      setSaveNotice("Compte Microsoft déconnecté de cette session.");
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function exportToCloud() {
+    setCloudBusy(true);
+    try {
+      await saveToCloud(createSaveBundle(messages));
+      setSaveNotice("Sauvegarde synchronisée dans SharePoint : Aventures/SynikWulf/infini-story-demo.json.");
+    } catch (error) {
+      setSaveNotice(cloudError(error, "La sauvegarde SharePoint n’a pas pu être envoyée."));
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function importFromCloud() {
+    setCloudBusy(true);
+    try {
+      const bundle = parseLocalSave(await loadFromCloud());
+      if (!bundle) throw new Error("INVALID_SAVE");
+      stopSpeech();
+      setMessages(bundle.messages);
+      setSaveNotice("Sauvegarde SharePoint restaurée. Elle demeure une démonstration locale hors canon.");
+    } catch (error) {
+      setSaveNotice(cloudError(error, "La sauvegarde SharePoint n’a pas pu être restaurée."));
+    } finally {
+      setCloudBusy(false);
+    }
   }
 
   async function importSave(event: ChangeEvent<HTMLInputElement>) {
@@ -237,6 +296,12 @@ function App() {
             saveNotice={saveNotice}
             onExport={exportSave}
             onOpenImport={() => importInput.current?.click()}
+            account={account}
+            cloudBusy={cloudBusy}
+            onConnect={connectCloud}
+            onDisconnect={disconnectCloud}
+            onExportCloud={exportToCloud}
+            onImportCloud={importFromCloud}
           />
         )}
       </main>
@@ -251,6 +316,22 @@ function App() {
       <input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={importSave} />
     </div>
   );
+}
+
+function createSaveBundle(messages: StoryMessage[]): LocalSaveBundle {
+  return {
+    format: "infini-story-local-save",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    mode: "demo-local",
+    messages,
+  };
+}
+
+function cloudError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message === "CONNECT_REQUIRED") return "Connectez-vous à Microsoft avant d’utiliser le coffre SharePoint.";
+  if (error instanceof Error && error.message === "INVALID_SAVE") return "Le fichier du coffre SharePoint n’est pas une sauvegarde Infini-Story valide.";
+  return fallback;
 }
 
 interface StoryViewProps {
@@ -333,11 +414,23 @@ function DetailView({
   saveNotice,
   onExport,
   onOpenImport,
+  account,
+  cloudBusy,
+  onConnect,
+  onDisconnect,
+  onExportCloud,
+  onImportCloud,
 }: {
   view: Exclude<ViewName, "story">;
   saveNotice: string;
   onExport: () => void;
   onOpenImport: () => void;
+  account: ConnectedAccount | null;
+  cloudBusy: boolean;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onExportCloud: () => void;
+  onImportCloud: () => void;
 }) {
   if (view === "character") {
     return <section className="detail-page"><span className="eyebrow">Profil de démonstration</span><h1>{demoCharacter.name}</h1><p className="lead">Cette fiche illustre l’interface. Elle n’est reliée à aucune campagne.</p><div className="stats-grid"><StatCard icon={<Heart />} label="Points de vie" value={`${demoCharacter.hp.current} / ${demoCharacter.hp.maximum}`} /><StatCard icon={<Shield />} label="Défense" value={String(demoCharacter.defense)} />{demoCharacter.resources.map((resource) => <StatCard key={resource.name} icon={<Sparkles />} label={resource.name} value={`${resource.current} / ${resource.maximum}`} />)}</div></section>;
@@ -346,7 +439,7 @@ function DetailView({
     return <section className="detail-page"><span className="eyebrow">Registre local</span><h1>Inventaire</h1><p className="lead">Objets fictifs utilisés uniquement pour valider l’expérience mobile.</p><div className="list-card">{demoInventory.map((item) => <div className="list-row" key={item.name}><div><strong>{item.name}</strong><small>{item.detail}</small></div><span>× {item.quantity}</span></div>)}</div></section>;
   }
   if (view === "saves") {
-    return <section className="detail-page"><span className="eyebrow">Coffret local</span><h1>Sauvegardes</h1><p className="lead">Exportez ou restaurez le journal de démonstration sur cet appareil. La synchronisation vers SharePoint sera branchée après l’enregistrement Microsoft et les règles d’accès.</p><div className="save-actions"><button className="save-action primary" onClick={onExport}><Download size={20} /><span><strong>Exporter une sauvegarde</strong><small>Télécharge un fichier restaurable.</small></span></button><button className="save-action" onClick={onOpenImport}><Upload size={20} /><span><strong>Importer une sauvegarde</strong><small>Vérifie le format avant restauration.</small></span></button></div><div className="save-notice"><ShieldCheck size={19} /><span>{saveNotice}</span></div><div className="empty-state compact"><BookOpen size={30} /><strong>SharePoint : bientôt disponible</strong><span>Le coffre par compte est préparé séparément. Cette version n’envoie encore aucun fichier vers le cloud.</span></div></section>;
+    return <section className="detail-page"><span className="eyebrow">Coffret de sauvegarde</span><h1>Sauvegardes</h1><p className="lead">Le coffre cloud utilise le compte Microsoft connecté et le dossier SharePoint attribué à SynikWulf. Une seule sauvegarde active est mise à jour, sans créer de copie à chaque envoi.</p><div className="save-notice"><ShieldCheck size={19} /><span>{account ? `Connecté : ${account.name} (${account.username})` : "Non connecté à Microsoft."}</span></div>{account ? <div className="save-actions"><button className="save-action primary" disabled={cloudBusy} onClick={onExportCloud}><Download size={20} /><span><strong>{cloudBusy ? "Synchronisation…" : "Sauvegarder dans SharePoint"}</strong><small>Met à jour la sauvegarde active du coffre.</small></span></button><button className="save-action" disabled={cloudBusy} onClick={onImportCloud}><Upload size={20} /><span><strong>Charger depuis SharePoint</strong><small>Restaure la sauvegarde active du coffre.</small></span></button><button className="ghost-button" disabled={cloudBusy} onClick={onDisconnect}>Déconnecter Microsoft</button></div> : <div className="save-actions"><button className="save-action primary" disabled={cloudBusy} onClick={onConnect}><ShieldCheck size={20} /><span><strong>{cloudBusy ? "Connexion…" : "Se connecter à Microsoft"}</strong><small>Autorise l’accès à votre coffre SharePoint.</small></span></button></div>}<div className="save-notice"><ShieldCheck size={19} /><span>{saveNotice}</span></div><div className="empty-state compact"><BookOpen size={30} /><strong>Copie locale facultative</strong><span>Vous pouvez aussi conserver un fichier JSON sur cet appareil.</span></div><div className="save-actions"><button className="save-action" onClick={onExport}><Download size={20} /><span><strong>Exporter un fichier local</strong><small>Télécharge une copie restaurable.</small></span></button><button className="save-action" onClick={onOpenImport}><Upload size={20} /><span><strong>Importer un fichier local</strong><small>Vérifie le format avant restauration.</small></span></button></div></section>;
   }
   return <section className="detail-page"><span className="eyebrow">Mémoire de campagne</span><h1>Journal</h1><p className="lead">Le journal canonique sera alimenté seulement lorsque le backend, la validation et les checkpoints seront branchés.</p><div className="empty-state"><BookOpen size={34} /><strong>Aucun événement canonique</strong><span>Le prototype ne lance pas la campagne et n’avance pas le World Clock.</span></div></section>;
 }

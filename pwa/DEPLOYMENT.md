@@ -6,6 +6,17 @@ La PWA est une interface mobile autonome. Elle propose une histoire de démonstr
 
 Elle ne reçoit aucune clé API, ne contacte aucun modèle d'IA, ne lit aucun dépôt GitHub et ne peut pas modifier le canon d'une campagne. Son stockage local sert uniquement à conserver le fil de démonstration de ce navigateur.
 
+## Coffret SharePoint
+
+La section **Sauvegardes** peut connecter un compte Microsoft de l'organisation Syn-Teck et utiliser le dossier de coffre attribué. La connexion emploie Microsoft Entra et Microsoft Graph avec une permission déléguée : le compte connecté ne peut accéder qu'aux fichiers auxquels il possède déjà des droits SharePoint.
+
+- L'identifiant client Entra est inclus dans le code de la PWA : il est public par conception et n'est pas un secret.
+- Aucun mot de passe, jeton permanent ou secret client n'est placé dans GitHub Pages.
+- La version actuelle cible `Aventures/SynikWulf/infini-story-demo.json` et met à jour ce même fichier à chaque sauvegarde cloud.
+- Ce fichier reste une sauvegarde de démonstration hors canon. Une sauvegarde cloud ne lance pas une campagne et ne modifie pas le World Clock.
+
+Pour ajouter un nouvel utilisateur à l'avenir, créer son dossier d'aventure SharePoint et lui attribuer les droits nécessaires avant de l'associer dans l'application. La gestion automatisée de plusieurs comptes sera une étape distincte.
+
 ## Préparer une version de production
 
 Depuis le dossier `pwa/` :
@@ -38,4 +49,4 @@ Le manifeste, l'icône et le service hors ligne suivront alors ce sous-dossier.
 4. Recharger une fois l'application, couper temporairement le réseau puis la rouvrir pour confirmer que le shell est disponible hors ligne.
 5. Vérifier que l'indicateur reste `Hors canon` et qu'aucune donnée de campagne n'est présente.
 
-L'étape suivante, distincte de cette PWA, est un backend privé avec validation canonique et adaptateur d'IA. Il ne doit être branché qu'après une décision explicite sur l'hébergement, l'authentification et le protocole de sauvegarde.
+L'étape suivante, distincte de cette PWA, est un backend privé avec validation canonique et adaptateur d'IA. Il ne doit être branché qu'après une décision explicite sur l'hébergement et le protocole canonique de sauvegarde.
