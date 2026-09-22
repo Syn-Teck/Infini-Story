@@ -40,6 +40,8 @@ jobs:
 
       - name: Check and build the PWA
         working-directory: pwa
+        env:
+          VITE_BASE_PATH: /Infini-Story/
         run: |
           pnpm run typecheck
           pnpm run build
