@@ -25,4 +25,12 @@ export interface CharacterSummary {
   resources: Array<{ name: string; current: number; maximum: number }>;
 }
 
-export type ViewName = "story" | "character" | "inventory" | "journal";
+export interface LocalSaveBundle {
+  format: "infini-story-local-save";
+  version: 1;
+  exportedAt: string;
+  mode: "demo-local";
+  messages: StoryMessage[];
+}
+
+export type ViewName = "story" | "character" | "inventory" | "journal" | "saves";

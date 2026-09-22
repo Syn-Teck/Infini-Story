@@ -42,6 +42,8 @@ Le dossier `pwa/` contient la première interface mobile d’Infini-Story. Cette
 
 Le prototype fonctionne exclusivement avec des données de démonstration locales. Il ne lit ni ne modifie le canon, ne lance aucune campagne et n’avance aucun World Clock.
 
+La vue **Sauvegardes** permet déjà d’exporter le journal de démonstration dans un fichier JSON restaurable et de réimporter ce même format après validation locale. Cette fonction ne téléverse aucun fichier. Le coffre SharePoint par compte sera relié dans une étape distincte, après la configuration Microsoft Entra et des règles d’accès.
+
 Pour le démarrer :
 
 ```powershell
