@@ -1,0 +1,20 @@
+{
+  "name": "Infini-Story",
+  "short_name": "Infini-Story",
+  "description": "Moteur narratif persistant pour aventures solo.",
+  "lang": "fr-CA",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090d19",
+  "theme_color": "#111629",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
